@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+.venv/
+server/.venv/
+
+# Alembic
+server/alembic/__pycache__/
+
+# VSCode / IDEs
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
