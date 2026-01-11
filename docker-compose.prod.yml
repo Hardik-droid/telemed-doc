@@ -1,0 +1,67 @@
+version: "3.9"
+
+services:
+  # 🔁 Redis Cache / Queue
+  redis:
+    image: redis:7-alpine
+    container_name: gzs_redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: always
+
+  # 🚀 FastAPI Backend API
+  api:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: gzs_api
+    env_file:
+      - .env
+    environment:
+      ENV: ${ENV}
+      LOG_LEVEL: ${LOG_LEVEL}
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ALGO: ${JWT_ALGO}
+      JWT_ACCESS_MIN: ${JWT_ACCESS_MIN}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+    depends_on:
+      redis:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "8000:8000"
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    restart: always
+
+  # ⚙️ Background Worker (RQ / Celery)
+  worker:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: gzs_worker
+    env_file:
+      - .env
+    environment:
+      ENV: ${ENV}
+      LOG_LEVEL: ${LOG_LEVEL}
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      RUN_ROLE: worker
+      SCHEDULER_INTERVAL: 60
+    depends_on:
+      redis:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: always
+
+volumes:
+  redis_data:
